@@ -11,6 +11,7 @@
 		A00000000000000000000002 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000012 /* Assets.xcassets */; };
 		A00000000000000000000017 /* KubeConfigModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000016 /* KubeConfigModels.swift */; };
 		A00000000000000000000019 /* ConnectionStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000018 /* ConnectionStatus.swift */; };
+		A0000000000000000000001B /* KubectlRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001A /* KubectlRunner.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -19,6 +20,7 @@
 		A00000000000000000000012 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A00000000000000000000016 /* KubeConfigModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KubeConfigModels.swift; sourceTree = "<group>"; };
 		A00000000000000000000018 /* ConnectionStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionStatus.swift; sourceTree = "<group>"; };
+		A0000000000000000000001A /* KubectlRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KubectlRunner.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,6 +57,7 @@
 			children = (
 				A00000000000000000000016 /* KubeConfigModels.swift */,
 				A00000000000000000000018 /* ConnectionStatus.swift */,
+				A0000000000000000000001A /* KubectlRunner.swift */,
 			);
 			path = Kubernetes;
 			sourceTree = "<group>";
@@ -139,6 +142,7 @@
 				A00000000000000000000001 /* KubarApp.swift in Sources */,
 				A00000000000000000000017 /* KubeConfigModels.swift in Sources */,
 				A00000000000000000000019 /* ConnectionStatus.swift in Sources */,
+				A0000000000000000000001B /* KubectlRunner.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
