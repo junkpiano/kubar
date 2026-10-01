@@ -12,6 +12,7 @@
 		A00000000000000000000017 /* KubeConfigModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000016 /* KubeConfigModels.swift */; };
 		A00000000000000000000019 /* ConnectionStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000018 /* ConnectionStatus.swift */; };
 		A0000000000000000000001B /* KubectlRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001A /* KubectlRunner.swift */; };
+		A0000000000000000000001D /* KubeContextStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001C /* KubeContextStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -21,6 +22,7 @@
 		A00000000000000000000016 /* KubeConfigModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KubeConfigModels.swift; sourceTree = "<group>"; };
 		A00000000000000000000018 /* ConnectionStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionStatus.swift; sourceTree = "<group>"; };
 		A0000000000000000000001A /* KubectlRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KubectlRunner.swift; sourceTree = "<group>"; };
+		A0000000000000000000001C /* KubeContextStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KubeContextStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,6 +60,7 @@
 				A00000000000000000000016 /* KubeConfigModels.swift */,
 				A00000000000000000000018 /* ConnectionStatus.swift */,
 				A0000000000000000000001A /* KubectlRunner.swift */,
+				A0000000000000000000001C /* KubeContextStore.swift */,
 			);
 			path = Kubernetes;
 			sourceTree = "<group>";
@@ -143,6 +146,7 @@
 				A00000000000000000000017 /* KubeConfigModels.swift in Sources */,
 				A00000000000000000000019 /* ConnectionStatus.swift in Sources */,
 				A0000000000000000000001B /* KubectlRunner.swift in Sources */,
+				A0000000000000000000001D /* KubeContextStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
