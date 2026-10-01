@@ -87,7 +87,9 @@ enum KubectlRunner {
 
             DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
                 if process.isRunning {
-                    process.terminate()
+                    stdoutPipe.fileHandleForReading.readabilityHandler = nil
+                    stderrPipe.fileHandleForReading.readabilityHandler = nil
+                    kill(process.processIdentifier, SIGKILL)
                     resume(.timedOut)
                 }
             }

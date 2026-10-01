@@ -10,13 +10,18 @@ final class KubarState: ObservableObject {
     private let defaults: UserDefaults
     private let selectedContextKey = "KubarSelectedContext"
     private var currentCheckToken = UUID()
+    private var currentLoadToken = UUID()
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
     }
 
     func load() async {
-        switch await KubeContextStore.loadContexts() {
+        let token = UUID()
+        currentLoadToken = token
+        let result = await KubeContextStore.loadContexts()
+        guard token == currentLoadToken else { return }
+        switch result {
         case .binaryNotFound:
             loadError = "kubectl not found"
             contexts = []
