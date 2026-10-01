@@ -16,6 +16,12 @@ final class KubarState: ObservableObject {
         self.defaults = defaults
     }
 
+    static func resolveSelection(loadedContexts: [String], saved: String?, currentContext: String?) -> String? {
+        if let saved, loadedContexts.contains(saved) { return saved }
+        if let currentContext, loadedContexts.contains(currentContext) { return currentContext }
+        return loadedContexts.first
+    }
+
     func load() async {
         let token = UUID()
         currentLoadToken = token
@@ -32,7 +38,7 @@ final class KubarState: ObservableObject {
             loadError = loadedContexts.isEmpty ? "No contexts found" : nil
             contexts = loadedContexts
             let saved = defaults.string(forKey: selectedContextKey)
-            let resolved = (saved.flatMap { loadedContexts.contains($0) ? $0 : nil }) ?? currentContext
+            let resolved = Self.resolveSelection(loadedContexts: loadedContexts, saved: saved, currentContext: currentContext)
             selectedContext = resolved
             if let resolved {
                 defaults.set(resolved, forKey: selectedContextKey)

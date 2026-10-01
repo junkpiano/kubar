@@ -71,7 +71,11 @@ enum KubectlRunner {
             process.terminationHandler = { _ in
                 stdoutPipe.fileHandleForReading.readabilityHandler = nil
                 stderrPipe.fileHandleForReading.readabilityHandler = nil
+                let remainingOut = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+                let remainingErr = stderrPipe.fileHandleForReading.readDataToEndOfFile()
                 lock.lock()
+                stdoutData.append(remainingOut)
+                stderrData.append(remainingErr)
                 let out = String(data: stdoutData, encoding: .utf8) ?? ""
                 let err = String(data: stderrData, encoding: .utf8) ?? ""
                 lock.unlock()
