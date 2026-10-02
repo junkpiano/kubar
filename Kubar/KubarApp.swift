@@ -24,6 +24,7 @@ struct KubarApp: App {
                     Text(loadError)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    if let hint = ConnectionHint.suggest(for: loadError) { hintView(hint) }
                 } else {
                     labeled("Context") { Picker("Context", selection: Binding(
                         get: { state.selectedContext ?? "" },
@@ -220,10 +221,43 @@ struct KubarApp: App {
                 .font(.subheadline)
                 .foregroundStyle(.green)
         case .checkFailed(let message):
-            Text("Check failed: \(message)")
-                .font(.subheadline)
-                .foregroundStyle(.red)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Check failed")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.red)
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+                    .textSelection(.enabled)
+                if let hint = ConnectionHint.suggest(for: message) { hintView(hint) }
+            }
         }
+    }
+
+    private func hintView(_ hint: ConnectionHint) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("💡 \(hint.text)")
+                .font(.caption)
+                .fixedSize(horizontal: false, vertical: true)
+            if let command = hint.command {
+                HStack {
+                    Text(command)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 4))
+                    Button("Copy") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(command, forType: .string)
+                    }
+                }
+            }
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.yellow.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
     }
 }
 

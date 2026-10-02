@@ -60,4 +60,16 @@ final class KubarCoreTests: XCTestCase {
         XCTAssertEqual(pods[2].status, "Terminating")
         XCTAssertEqual(pods[2].node, "unscheduled")
     }
+
+    func testConnectionHints() {
+        let gcloud = "cred.go:166] print credential failed ... Reauthentication failed. cannot prompt during non-interactive execution.\nPlease run:\n\n  $ gcloud auth login"
+        XCTAssertEqual(ConnectionHint.suggest(for: gcloud)?.command, "gcloud auth login")
+        XCTAssertEqual(ConnectionHint.suggest(for: "getting credentials: exec: executable gke-gcloud-auth-plugin not found")?.command,
+                       "gcloud components install gke-gcloud-auth-plugin")
+        XCTAssertNotNil(ConnectionHint.suggest(for: "kubectl not found")?.command)
+        XCTAssertNil(ConnectionHint.suggest(for: "Unable to connect to the server: dial tcp 10.0.0.1:443: i/o timeout")?.command)
+        XCTAssertNotNil(ConnectionHint.suggest(for: "Unable to connect to the server: dial tcp 10.0.0.1:443: i/o timeout"))
+        XCTAssertNotNil(ConnectionHint.suggest(for: "error: You must be logged in to the server (Unauthorized)"))
+        XCTAssertNil(ConnectionHint.suggest(for: "something unrelated"))
+    }
 }

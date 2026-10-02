@@ -90,7 +90,13 @@ func runCommand(_ options: Options, _ ctx: String) async -> (String, Bool) {
     let status = await KubeClient.check(ctx)
     var statusLine = "\(ctx): Connected"
     if case .checkFailed(let message) = status { statusLine = "\(ctx): Check failed: \(message)" }
-    guard case .connected = status else { return (statusLine, false) }
+    guard case .connected = status else {
+        var text = statusLine
+        if case .checkFailed(let message) = status, let hint = ConnectionHint.suggest(for: message) {
+            text += "\n\nHint: \(hint.text)" + (hint.command.map { "\n  $ \($0)" } ?? "")
+        }
+        return (text, false)
+    }
 
     let command = options.command
     switch command {
