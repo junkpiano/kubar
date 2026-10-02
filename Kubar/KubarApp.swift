@@ -15,7 +15,7 @@ struct KubarApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra("Kubar", systemImage: "menubar.rectangle") {
+        MenuBarExtra {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Kubar")
                     .font(.headline)
@@ -81,6 +81,8 @@ struct KubarApp: App {
                     await state.refreshStatus(silent: true)
                 }
             }
+        } label: {
+            Image("MenuBarIcon")
         }
         .menuBarExtraStyle(.window)
 

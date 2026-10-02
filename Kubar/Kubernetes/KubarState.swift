@@ -14,7 +14,7 @@ final class KubarState: ObservableObject {
     @Published private(set) var nodes: [NodeInfo] = []
 
     private let defaults: UserDefaults
-    private let selectedContextKey = "KubarSelectedContext"
+        private let selectedContextKey = "KubarSelectedContext"
     private var currentCheckToken = UUID()
     private var currentLoadToken = UUID()
     private var currentWorkloadToken = UUID()
