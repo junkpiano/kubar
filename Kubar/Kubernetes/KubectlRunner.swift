@@ -33,6 +33,18 @@ enum KubectlRunner {
         return nil
     }
 
+    /// GUI apps start with a minimal PATH (/usr/bin:/bin...), so kubectl's credential plugins
+    /// (gcloud, aws, az...) can't be found. Append the usual install locations. No-op on Windows.
+    static func augmentedPath(_ current: String?, home: String = NSHomeDirectory()) -> String {
+        #if os(Windows)
+        return current ?? ""
+        #else
+        let existing = (current ?? "").split(separator: ":").map(String.init)
+        let extras = ["/opt/homebrew/bin", "/usr/local/bin", "\(home)/google-cloud-sdk/bin", "\(home)/.local/bin"]
+        return (existing + extras.filter { !existing.contains($0) }).joined(separator: ":")
+        #endif
+    }
+
     enum Result {
         case binaryNotFound
         case completed(exitCode: Int32, stdout: String, stderr: String)
@@ -47,6 +59,9 @@ enum KubectlRunner {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: binaryPath)
         process.arguments = arguments
+        var environment = ProcessInfo.processInfo.environment
+        environment["PATH"] = augmentedPath(environment["PATH"])
+        process.environment = environment
 
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()

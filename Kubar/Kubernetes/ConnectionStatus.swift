@@ -34,7 +34,10 @@ public struct ConnectionHint: Equatable {
         if m.contains("gcloud auth login") || m.contains("reauthentication failed") {
             return ConnectionHint(text: "Your Google Cloud login expired. Sign in again in a terminal, then refresh.", command: "gcloud auth login")
         }
-        if m.contains("gke-gcloud-auth-plugin") && m.contains("not found") {
+        if m.contains("\"gcloud\": executable file not found") {
+            return ConnectionHint(text: "The Google Cloud CLI (gcloud) isn't installed or isn't on PATH. Install it, sign in with gcloud auth login, then refresh.", command: nil)
+        }
+        if m.contains("executable gke-gcloud-auth-plugin not found") {
             return ConnectionHint(text: "The GKE auth plugin is missing. Install it, then refresh.", command: "gcloud components install gke-gcloud-auth-plugin")
         }
         if m == "kubectl not found" {

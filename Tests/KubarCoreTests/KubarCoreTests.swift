@@ -71,5 +71,18 @@ final class KubarCoreTests: XCTestCase {
         XCTAssertNotNil(ConnectionHint.suggest(for: "Unable to connect to the server: dial tcp 10.0.0.1:443: i/o timeout"))
         XCTAssertNotNil(ConnectionHint.suggest(for: "error: You must be logged in to the server (Unauthorized)"))
         XCTAssertNil(ConnectionHint.suggest(for: "something unrelated"))
+        // gcloud missing from PATH must not be mistaken for a missing plugin
+        let noGcloud = "failure while executing gcloud: exec: \"gcloud\": executable file not found in $PATH\nexec: executable /x/gke-gcloud-auth-plugin failed with exit code 1"
+        let hint = ConnectionHint.suggest(for: noGcloud)
+        XCTAssertNil(hint?.command)
+        XCTAssertTrue(hint?.text.contains("gcloud") == true)
+    }
+
+    func testAugmentedPath() {
+        #if !os(Windows)
+        let path = KubectlRunner.augmentedPath("/usr/bin:/bin:/opt/homebrew/bin", home: "/Users/me")
+        XCTAssertEqual(path, "/usr/bin:/bin:/opt/homebrew/bin:/usr/local/bin:/Users/me/google-cloud-sdk/bin:/Users/me/.local/bin")
+        XCTAssertTrue(KubectlRunner.augmentedPath(nil, home: "/h").hasPrefix("/opt/homebrew/bin"))
+        #endif
     }
 }
