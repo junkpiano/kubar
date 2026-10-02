@@ -6,14 +6,6 @@ struct KubarApp: App {
     @StateObject private var state = KubarState()
     @Environment(\.openWindow) private var openWindow
 
-    init() {
-        #if DEBUG
-        KubeConfigModelsSelfCheck.run()
-        ConnectionStatusSelfCheck.run()
-        KubectlRunnerSelfCheck.run()
-        #endif
-    }
-
     var body: some Scene {
         MenuBarExtra {
             VStack(alignment: .leading, spacing: 8) {

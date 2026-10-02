@@ -8,13 +8,7 @@ public enum ConnectionStatus: Equatable {
 }
 
 enum ConnectionStatusMapper {
-    static func map(exitCode: Int32?, timedOut: Bool, stderr: String) -> ConnectionStatus {
-        if timedOut {
-            return .checkFailed(message: "timed out")
-        }
-        guard let exitCode else {
-            return .checkFailed(message: "kubectl did not run")
-        }
+    static func map(exitCode: Int32, stderr: String) -> ConnectionStatus {
         if exitCode == 0 {
             return .connected
         }
@@ -56,15 +50,3 @@ public struct ConnectionHint: Equatable {
         return nil
     }
 }
-
-#if DEBUG
-enum ConnectionStatusSelfCheck {
-    static func run() {
-        assert(ConnectionStatusMapper.map(exitCode: 0, timedOut: false, stderr: "") == .connected)
-        assert(ConnectionStatusMapper.map(exitCode: 1, timedOut: false, stderr: "Unable to connect to the server\n") == .checkFailed(message: "Unable to connect to the server"))
-        assert(ConnectionStatusMapper.map(exitCode: 1, timedOut: false, stderr: "") == .checkFailed(message: "exit code 1"))
-        assert(ConnectionStatusMapper.map(exitCode: nil, timedOut: true, stderr: "") == .checkFailed(message: "timed out"))
-        print("ConnectionStatusSelfCheck passed")
-    }
-}
-#endif

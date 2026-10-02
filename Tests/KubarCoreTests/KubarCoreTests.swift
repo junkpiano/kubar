@@ -2,10 +2,57 @@ import XCTest
 @testable import KubarCore
 
 final class KubarCoreTests: XCTestCase {
-    func testSelfChecks() {
-        KubeConfigModelsSelfCheck.run()
-        ConnectionStatusSelfCheck.run()
-        KubectlRunnerSelfCheck.run()
+    func testKubeConfigDecoding() throws {
+        let sample = """
+        {
+          "contexts": [
+            { "name": "docker-desktop", "context": { "cluster": "docker-desktop", "user": "docker-desktop" } },
+            { "name": "gke_my-project_us-central1_my-cluster", "context": { "cluster": "gke_my-project", "user": "gke_my-project" } }
+          ],
+          "current-context": "docker-desktop"
+        }
+        """
+        let decoded = try KubeConfigModels.decodeContexts(from: Data(sample.utf8))
+        XCTAssertEqual(decoded.contexts, ["docker-desktop", "gke_my-project_us-central1_my-cluster"])
+        XCTAssertEqual(decoded.currentContext, "docker-desktop")
+
+        let empty = try KubeConfigModels.decodeContexts(from: Data("{}".utf8))
+        XCTAssertTrue(empty.contexts.isEmpty)
+        XCTAssertNil(empty.currentContext)
+
+        XCTAssertThrowsError(try KubeConfigModels.decodeContexts(from: Data("not json".utf8)))
+    }
+
+    func testConnectionStatusMapping() {
+        XCTAssertEqual(ConnectionStatusMapper.map(exitCode: 0, stderr: ""), .connected)
+        XCTAssertEqual(ConnectionStatusMapper.map(exitCode: 1, stderr: "Unable to connect to the server\n"),
+                       .checkFailed(message: "Unable to connect to the server"))
+        XCTAssertEqual(ConnectionStatusMapper.map(exitCode: 1, stderr: ""), .checkFailed(message: "exit code 1"))
+    }
+
+    func testResolveBinaryPath() {
+        let found = KubectlRunner.resolveBinaryPath(
+            candidates: ["/opt/homebrew/bin/kubectl", "/usr/local/bin/kubectl"],
+            pathEnvironment: nil,
+            fileExists: { $0 == "/usr/local/bin/kubectl" }
+        )
+        XCTAssertEqual(found, "/usr/local/bin/kubectl")
+
+        let sep = KubectlRunner.pathSeparator
+        let name = KubectlRunner.binaryName
+        let viaPath = KubectlRunner.resolveBinaryPath(
+            candidates: [],
+            pathEnvironment: "/usr/bin\(sep)/custom/bin",
+            fileExists: { $0 == "/custom/bin/\(name)" }
+        )
+        XCTAssertEqual(viaPath, "/custom/bin/\(name)")
+
+        let missing = KubectlRunner.resolveBinaryPath(
+            candidates: ["/opt/homebrew/bin/kubectl"],
+            pathEnvironment: "/usr/bin",
+            fileExists: { _ in false }
+        )
+        XCTAssertNil(missing)
     }
 
     func testNodeParsing() {

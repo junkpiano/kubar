@@ -127,34 +127,3 @@ enum KubectlRunner {
         }
     }
 }
-
-#if DEBUG
-enum KubectlRunnerSelfCheck {
-    static func run() {
-        let found = KubectlRunner.resolveBinaryPath(
-            candidates: ["/opt/homebrew/bin/kubectl", "/usr/local/bin/kubectl"],
-            pathEnvironment: nil,
-            fileExists: { $0 == "/usr/local/bin/kubectl" }
-        )
-        assert(found == "/usr/local/bin/kubectl")
-
-        let sep = KubectlRunner.pathSeparator
-        let name = KubectlRunner.binaryName
-        let viaPath = KubectlRunner.resolveBinaryPath(
-            candidates: [],
-            pathEnvironment: "/usr/bin\(sep)/custom/bin",
-            fileExists: { $0 == "/custom/bin/\(name)" }
-        )
-        assert(viaPath == "/custom/bin/\(name)")
-
-        let missing = KubectlRunner.resolveBinaryPath(
-            candidates: ["/opt/homebrew/bin/kubectl"],
-            pathEnvironment: "/usr/bin",
-            fileExists: { _ in false }
-        )
-        assert(missing == nil)
-
-        print("KubectlRunnerSelfCheck passed")
-    }
-}
-#endif

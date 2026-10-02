@@ -24,25 +24,22 @@ public struct NodeInfo: Identifiable {
         return String(format: "%.1f GiB", ki / 1_048_576)
     }
 
-    private struct List: Decodable {
-        struct Item: Decodable {
-            struct Meta: Decodable { let name: String; let labels: [String: String]? }
-            struct Status: Decodable {
-                struct Condition: Decodable { let type: String; let status: String }
-                struct Info: Decodable { let kubeletVersion: String; let osImage: String; let containerRuntimeVersion: String }
-                let conditions: [Condition]?
-                let nodeInfo: Info
-                let capacity: [String: String]?
-            }
-            let metadata: Meta
-            let status: Status
+    private struct Item: Decodable {
+        struct Meta: Decodable { let name: String; let labels: [String: String]? }
+        struct Status: Decodable {
+            struct Condition: Decodable { let type: String; let status: String }
+            struct Info: Decodable { let kubeletVersion: String; let osImage: String; let containerRuntimeVersion: String }
+            let conditions: [Condition]?
+            let nodeInfo: Info
+            let capacity: [String: String]?
         }
-        let items: [Item]
+        let metadata: Meta
+        let status: Status
     }
 
     static func parse(_ json: String, usage: [String: Usage]) -> [NodeInfo] {
         guard let data = json.data(using: .utf8),
-              let list = try? JSONDecoder().decode(List.self, from: data) else { return [] }
+              let list = try? JSONDecoder().decode(K8sList<Item>.self, from: data) else { return [] }
         return list.items.map { item in
             let prefix = "node-role.kubernetes.io/"
             let roles = (item.metadata.labels ?? [:]).keys

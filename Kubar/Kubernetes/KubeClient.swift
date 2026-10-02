@@ -19,7 +19,7 @@ public enum KubeClient {
         case .timedOut:
             return .checkFailed(message: "timed out")
         case .completed(let exitCode, _, let stderr):
-            return ConnectionStatusMapper.map(exitCode: exitCode, timedOut: false, stderr: stderr)
+            return ConnectionStatusMapper.map(exitCode: exitCode, stderr: stderr)
         }
     }
 
