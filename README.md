@@ -1,6 +1,15 @@
 # Kubar
 
-Basic macOS menu bar app written in Swift.
+<p align="center">
+  <img src="Kubar/Assets.xcassets/AppIcon.appiconset/icon_256.png" alt="Kubar icon" width="128" height="128">
+</p>
+
+<p align="center">Your Kubernetes cluster in the macOS menu <b>bar</b>.</p>
+
+- Switch kubeconfig contexts and check the connection
+- Nodes with readiness and CPU/memory usage
+- Browse namespaces, deployments and pods
+- Restart deployments, delete deployments and pods
 
 ## Open in Xcode
 
