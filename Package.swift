@@ -1,10 +1,9 @@
 // swift-tools-version: 5.9
 import PackageDescription
 
-// Platform-independent core (kubectl runner + parsing). Shares sources with the macOS app target,
-// so the same files are built by Xcode (app) and SwiftPM (`swift test`, Windows/Linux).
-// `kubar` is the command-line client built on KubarCore.
-// KubarState.swift is excluded: it uses Combine (@Published), which doesn't exist on Windows.
+// KubarCore: platform-independent core (kubectl runner + parsing), no UI or Combine, so it builds on
+// macOS, Linux and Windows. The `kubar` CLI depends on it; the macOS app (Kubar.xcodeproj) compiles
+// the same Sources/KubarCore files directly, so keep new core files listed in both places.
 let package = Package(
     name: "KubarCore",
     platforms: [.macOS(.v13)],
@@ -14,7 +13,7 @@ let package = Package(
     ],
     targets: [
         .executableTarget(name: "kubar", dependencies: ["KubarCore"], path: "Sources/kubar"),
-        .target(name: "KubarCore", path: "Kubar/Kubernetes", exclude: ["KubarState.swift"]),
+        .target(name: "KubarCore"),
         .testTarget(name: "KubarCoreTests", dependencies: ["KubarCore"], path: "Tests/KubarCoreTests"),
     ]
 )

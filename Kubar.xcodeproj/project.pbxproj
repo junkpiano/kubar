@@ -9,26 +9,29 @@
 /* Begin PBXBuildFile section */
 		A00000000000000000000001 /* KubarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000011 /* KubarApp.swift */; };
 		A00000000000000000000002 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000012 /* Assets.xcassets */; };
+		A0000000000000000000001F /* KubarState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001E /* KubarState.swift */; };
 		A00000000000000000000017 /* KubeConfigModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000016 /* KubeConfigModels.swift */; };
 		A00000000000000000000019 /* ConnectionStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000018 /* ConnectionStatus.swift */; };
 		A0000000000000000000001B /* KubectlRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001A /* KubectlRunner.swift */; };
 		A0000000000000000000001D /* KubeContextStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001C /* KubeContextStore.swift */; };
 		A0000000000000000000002B /* KubeResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002A /* KubeResources.swift */; };
 		A0000000000000000000002D /* KubeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002C /* KubeClient.swift */; };
-		A0000000000000000000001F /* KubarState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001E /* KubarState.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		A0000000000000000000000D /* Kubar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kubar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A00000000000000000000011 /* KubarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KubarApp.swift; sourceTree = "<group>"; };
 		A00000000000000000000012 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A0000000000000000000001E /* KubarState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KubarState.swift; sourceTree = "<group>"; };
 		A00000000000000000000016 /* KubeConfigModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KubeConfigModels.swift; sourceTree = "<group>"; };
 		A00000000000000000000018 /* ConnectionStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionStatus.swift; sourceTree = "<group>"; };
 		A0000000000000000000001A /* KubectlRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KubectlRunner.swift; sourceTree = "<group>"; };
 		A0000000000000000000001C /* KubeContextStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KubeContextStore.swift; sourceTree = "<group>"; };
-		A0000000000000000000002C /* KubeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KubeClient.swift; sourceTree = "<group>"; };
 		A0000000000000000000002A /* KubeResources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KubeResources.swift; sourceTree = "<group>"; };
-		A0000000000000000000001E /* KubarState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KubarState.swift; sourceTree = "<group>"; };
+		A0000000000000000000002C /* KubeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KubeClient.swift; sourceTree = "<group>"; };
+		A00000000000000000000043 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		A00000000000000000000044 /* Tests */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Tests; sourceTree = "<group>"; };
+		A00000000000000000000045 /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Package.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -46,6 +49,9 @@
 			isa = PBXGroup;
 			children = (
 				A0000000000000000000000B /* Kubar */,
+				A00000000000000000000040 /* Sources */,
+				A00000000000000000000044 /* Tests */,
+				A00000000000000000000045 /* Package.swift */,
 				A0000000000000000000000C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -55,23 +61,9 @@
 			children = (
 				A00000000000000000000011 /* KubarApp.swift */,
 				A00000000000000000000012 /* Assets.xcassets */,
-				A00000000000000000000015 /* Kubernetes */,
-			);
-			path = Kubar;
-			sourceTree = "<group>";
-		};
-		A00000000000000000000015 /* Kubernetes */ = {
-			isa = PBXGroup;
-			children = (
-				A00000000000000000000016 /* KubeConfigModels.swift */,
-				A00000000000000000000018 /* ConnectionStatus.swift */,
-				A0000000000000000000001A /* KubectlRunner.swift */,
-				A0000000000000000000001C /* KubeContextStore.swift */,
-				A0000000000000000000002A /* KubeResources.swift */,
-				A0000000000000000000002C /* KubeClient.swift */,
 				A0000000000000000000001E /* KubarState.swift */,
 			);
-			path = Kubernetes;
+			path = Kubar;
 			sourceTree = "<group>";
 		};
 		A0000000000000000000000C /* Products */ = {
@@ -80,6 +72,36 @@
 				A0000000000000000000000D /* Kubar.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000040 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000041 /* KubarCore */,
+				A00000000000000000000042 /* kubar */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000041 /* KubarCore */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000016 /* KubeConfigModels.swift */,
+				A00000000000000000000018 /* ConnectionStatus.swift */,
+				A0000000000000000000001A /* KubectlRunner.swift */,
+				A0000000000000000000001C /* KubeContextStore.swift */,
+				A0000000000000000000002A /* KubeResources.swift */,
+				A0000000000000000000002C /* KubeClient.swift */,
+			);
+			path = KubarCore;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000042 /* kubar */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000043 /* main.swift */,
+			);
+			path = kubar;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -152,13 +174,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				A00000000000000000000001 /* KubarApp.swift in Sources */,
+				A0000000000000000000001F /* KubarState.swift in Sources */,
 				A00000000000000000000017 /* KubeConfigModels.swift in Sources */,
 				A00000000000000000000019 /* ConnectionStatus.swift in Sources */,
 				A0000000000000000000001B /* KubectlRunner.swift in Sources */,
 				A0000000000000000000001D /* KubeContextStore.swift in Sources */,
 				A0000000000000000000002B /* KubeResources.swift in Sources */,
 				A0000000000000000000002D /* KubeClient.swift in Sources */,
-				A0000000000000000000001F /* KubarState.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

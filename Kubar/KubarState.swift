@@ -184,3 +184,8 @@ final class KubarState: ObservableObject {
         clearWorkloads()
     }
 }
+
+struct NodeRef: Codable, Hashable {
+    let context: String
+    let name: String
+}

@@ -59,11 +59,6 @@ public struct NodeInfo: Identifiable {
     }
 }
 
-struct NodeRef: Codable, Hashable {
-    let context: String
-    let name: String
-}
-
 private struct K8sList<T: Decodable>: Decodable {
     let items: [T]
 }
