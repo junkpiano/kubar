@@ -1,11 +1,19 @@
 import Foundation
 
 enum KubectlRunner {
+    #if os(Windows)
+    static let candidatePaths: [String] = []
+    static let pathSeparator: Character = ";"
+    static let binaryName = "kubectl.exe"
+    #else
     static let candidatePaths = [
         "/opt/homebrew/bin/kubectl",
         "/usr/local/bin/kubectl",
         "/usr/bin/kubectl",
     ]
+    static let pathSeparator: Character = ":"
+    static let binaryName = "kubectl"
+    #endif
 
     static func resolveBinaryPath(
         candidates: [String] = candidatePaths,
@@ -16,8 +24,8 @@ enum KubectlRunner {
             return candidate
         }
         guard let pathEnvironment else { return nil }
-        for directory in pathEnvironment.split(separator: ":") {
-            let candidate = "\(directory)/kubectl"
+        for directory in pathEnvironment.split(separator: pathSeparator) {
+            let candidate = "\(directory)/\(binaryName)"
             if fileExists(candidate) {
                 return candidate
             }
@@ -93,7 +101,11 @@ enum KubectlRunner {
                 if process.isRunning {
                     stdoutPipe.fileHandleForReading.readabilityHandler = nil
                     stderrPipe.fileHandleForReading.readabilityHandler = nil
+                    #if os(Windows)
+                    process.terminate()
+                    #else
                     kill(process.processIdentifier, SIGKILL)
+                    #endif
                     resume(.timedOut)
                 }
             }
@@ -111,12 +123,14 @@ enum KubectlRunnerSelfCheck {
         )
         assert(found == "/usr/local/bin/kubectl")
 
+        let sep = KubectlRunner.pathSeparator
+        let name = KubectlRunner.binaryName
         let viaPath = KubectlRunner.resolveBinaryPath(
             candidates: [],
-            pathEnvironment: "/usr/bin:/custom/bin",
-            fileExists: { $0 == "/custom/bin/kubectl" }
+            pathEnvironment: "/usr/bin\(sep)/custom/bin",
+            fileExists: { $0 == "/custom/bin/\(name)" }
         )
-        assert(viaPath == "/custom/bin/kubectl")
+        assert(viaPath == "/custom/bin/\(name)")
 
         let missing = KubectlRunner.resolveBinaryPath(
             candidates: ["/opt/homebrew/bin/kubectl"],
