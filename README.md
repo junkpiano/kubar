@@ -48,6 +48,10 @@ It needs the Swift runtime DLLs: install the Swift runtime, or copy them next to
 Windows 11 24H2 or later runs kubectl without a console window (`AllocConsoleWithOptions`); on earlier
 versions a console may flash once at startup.
 
+## Contributing
+
+This project does not accept pull requests. Send a patch instead; see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 [MIT](LICENSE). Kubar runs the separately installed `kubectl` (Apache-2.0) as an external program and does not include or redistribute any of its code.
