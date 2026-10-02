@@ -1,21 +1,21 @@
 import Foundation
 
-struct NodeInfo: Identifiable {
-    let name: String
-    let ready: Bool
-    let roles: String
-    let version: String
-    let os: String
-    let runtime: String
-    let capacity: String
-    let usage: Usage?
-    var id: String { name }
+public struct NodeInfo: Identifiable {
+    public let name: String
+    public let ready: Bool
+    public let roles: String
+    public let version: String
+    public let os: String
+    public let runtime: String
+    public let capacity: String
+    public let usage: Usage?
+    public var id: String { name }
 
-    struct Usage {
-        let cpu: String
-        let cpuPct: Int
-        let mem: String
-        let memPct: Int
+    public struct Usage {
+        public let cpu: String
+        public let cpuPct: Int
+        public let mem: String
+        public let memPct: Int
     }
 
     private static func gib(_ quantity: String?) -> String {
@@ -71,13 +71,13 @@ private struct K8sList<T: Decodable>: Decodable {
     let items: [T]
 }
 
-struct DeploymentInfo: Identifiable {
-    let name: String
-    let ready: Int
-    let desired: Int
+public struct DeploymentInfo: Identifiable {
+    public let name: String
+    public let ready: Int
+    public let desired: Int
     /// Label selector for `kubectl -l`. ponytail: matchLabels only, matchExpressions are ignored.
-    let selector: String?
-    var id: String { name }
+    public let selector: String?
+    public var id: String { name }
 
     private struct Item: Decodable {
         struct Meta: Decodable { let name: String }
@@ -107,14 +107,14 @@ struct DeploymentInfo: Identifiable {
     }
 }
 
-struct PodInfo: Identifiable {
-    let name: String
-    let status: String
-    let ready: String
-    let restarts: Int
-    let node: String
-    let ok: Bool
-    var id: String { name }
+public struct PodInfo: Identifiable {
+    public let name: String
+    public let status: String
+    public let ready: String
+    public let restarts: Int
+    public let node: String
+    public let ok: Bool
+    public var id: String { name }
 
     private struct Item: Decodable {
         struct Meta: Decodable { let name: String; let deletionTimestamp: String? }

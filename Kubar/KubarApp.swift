@@ -243,7 +243,7 @@ struct NodeDetailView: View {
         .task {
             // Watch mode: re-describe every 10s; keep the last good text if a refresh fails.
             while !Task.isCancelled {
-                let out = await KubarState.output(ref.context, ["describe", "node", ref.name])
+                let out = await KubeClient.output(ref.context, ["describe", "node", ref.name])
                 if !out.isEmpty { text = out } else if text == "Loading…" { text = "Couldn't describe node (timed out or forbidden)" }
                 try? await Task.sleep(for: .seconds(10))
             }

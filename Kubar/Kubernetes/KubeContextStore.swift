@@ -1,13 +1,13 @@
 import Foundation
 
-enum KubeContextStore {
-    enum LoadResult {
+public enum KubeContextStore {
+    public enum LoadResult {
         case binaryNotFound
         case configLoadFailed(message: String)
         case loaded(contexts: [String], currentContext: String?)
     }
 
-    static func loadContexts() async -> LoadResult {
+    public static func loadContexts() async -> LoadResult {
         switch await KubectlRunner.run(arguments: ["config", "view", "-o", "json"]) {
         case .binaryNotFound:
             return .binaryNotFound

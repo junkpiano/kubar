@@ -14,7 +14,7 @@ final class KubarState: ObservableObject {
     @Published private(set) var nodes: [NodeInfo] = []
 
     private let defaults: UserDefaults
-        private let selectedContextKey = "KubarSelectedContext"
+    private let selectedContextKey = "KubarSelectedContext"
     private var currentCheckToken = UUID()
     private var currentLoadToken = UUID()
     private var currentWorkloadToken = UUID()
@@ -82,33 +82,16 @@ final class KubarState: ObservableObject {
         let token = UUID()
         currentCheckToken = token
         if !silent { connectionStatus = .checking }
-        let result = await KubectlRunner.run(arguments: ["--context", context, "version"])
+        let status = await KubeClient.check(context)
         guard token == currentCheckToken else { return }
-        switch result {
-        case .binaryNotFound:
-            connectionStatus = .checkFailed(message: "kubectl not found")
-        case .timedOut:
-            connectionStatus = .checkFailed(message: "timed out")
-        case .completed(let exitCode, _, let stderr):
-            connectionStatus = ConnectionStatusMapper.map(exitCode: exitCode, timedOut: false, stderr: stderr)
-        }
-        guard case .connected = connectionStatus else { clearResources(); return }
-        // Best effort: a failing query (e.g. RBAC, no metrics-server) yields an empty list, which the UI hides.
-        async let ns = Self.lines(context, ["get", "namespaces", "-o", "name"])
-        async let top = Self.lines(context, ["top", "nodes", "--no-headers"])
-        async let nodeJSON = Self.output(context, ["get", "nodes", "-o", "json"])
-        let (nsLines, topLines, nodesOut) = await (ns, top, nodeJSON)
+        connectionStatus = status
+        guard case .connected = status else { clearResources(); return }
+        async let nsList = KubeClient.namespaces(context)
+        async let nodeList = KubeClient.nodes(context)
+        let (fetchedNamespaces, fetchedNodes) = await (nsList, nodeList)
         guard token == currentCheckToken else { return }
-        namespaces = nsLines.map { $0.replacingOccurrences(of: "namespace/", with: "") }
-        // top nodes columns: NAME CPU(cores) CPU% MEMORY(bytes) MEMORY%
-        var usage: [String: NodeInfo.Usage] = [:]
-        for line in topLines {
-            let c = line.split(separator: " ")
-            if c.count == 5, let cpuPct = Int(c[2].dropLast()), let memPct = Int(c[4].dropLast()) {
-                usage[String(c[0])] = .init(cpu: String(c[1]), cpuPct: cpuPct, mem: String(c[3]), memPct: memPct)
-            }
-        }
-        nodes = NodeInfo.parse(nodesOut, usage: usage)
+        namespaces = fetchedNamespaces
+        nodes = fetchedNodes
         if let selectedNamespace, !namespaces.contains(selectedNamespace) { clearWorkloads() }
         // Restore the last selection for this context. Choosing "Select…" removes the saved value, so it isn't restored against the user's wish.
         if selectedNamespace == nil, let saved = defaults.string(forKey: Self.key("Namespace", context)), namespaces.contains(saved) {
@@ -147,26 +130,26 @@ final class KubarState: ObservableObject {
         let token = UUID()
         currentWorkloadToken = token
         let selector = deployments.first { $0.name == selectedDeployment }?.selector
-        async let depOut = Self.output(context, ["get", "deployments", "-n", ns, "-o", "json"])
-        async let podOut = Self.podsJSON(context, ns, selector)
-        let (depJSON, podJSON) = await (depOut, podOut)
+        async let depList = KubeClient.deployments(context, namespace: ns)
+        async let podList = Self.pods(context, ns, selector)
+        let (fetchedDeployments, fetchedPods) = await (depList, podList)
         guard token == currentWorkloadToken, selectedContext == context, selectedNamespace == ns else { return }
-        deployments = DeploymentInfo.parse(depJSON)
+        deployments = fetchedDeployments
         if let selectedDeployment, !deployments.contains(where: { $0.name == selectedDeployment }) {
             self.selectedDeployment = nil
         }
-        pods = selectedDeployment == nil ? [] : PodInfo.parse(podJSON)
+        pods = selectedDeployment == nil ? [] : fetchedPods
         // A deployment picked just now has no selector loaded yet: fetch its pods once.
         if selector == nil, let dep = deployments.first(where: { $0.name == selectedDeployment }), let sel = dep.selector {
-            let json = await Self.podsJSON(context, ns, sel)
+            let fetched = await KubeClient.pods(context, namespace: ns, selector: sel)
             guard token == currentWorkloadToken else { return }
-            pods = PodInfo.parse(json)
+            pods = fetched
         }
     }
 
-    private static func podsJSON(_ context: String, _ ns: String, _ selector: String?) async -> String {
-        guard let selector else { return "" }
-        return await output(context, ["get", "pods", "-n", ns, "-l", selector, "-o", "json"])
+    private static func pods(_ context: String, _ ns: String, _ selector: String?) async -> [PodInfo] {
+        guard let selector else { return [] }
+        return await KubeClient.pods(context, namespace: ns, selector: selector)
     }
 
     private func clearWorkloads() {
@@ -180,14 +163,5 @@ final class KubarState: ObservableObject {
         namespaces = []
         nodes = []
         clearWorkloads()
-    }
-
-    static func output(_ context: String, _ args: [String]) async -> String {
-        guard case .completed(0, let stdout, _) = await KubectlRunner.run(arguments: ["--context", context] + args) else { return "" }
-        return stdout
-    }
-
-    private static func lines(_ context: String, _ args: [String]) async -> [String] {
-        await output(context, args).split(separator: "\n").map(String.init)
     }
 }

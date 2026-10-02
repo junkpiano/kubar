@@ -1,6 +1,6 @@
 import Foundation
 
-enum ConnectionStatus: Equatable {
+public enum ConnectionStatus: Equatable {
     case idle
     case checking
     case connected
