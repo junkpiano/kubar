@@ -22,3 +22,7 @@ swift run kubar -c <context> -w nodes          # pick a context, refresh every 1
 ```
 
 Run `swift test` to test the core.
+
+## License
+
+[MIT](LICENSE). Kubar runs the separately installed `kubectl` (Apache-2.0) as an external program and does not include or redistribute any of its code.
