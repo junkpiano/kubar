@@ -170,14 +170,33 @@ struct KubarApp: App {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
-                    Picker("Deployment", selection: Binding(
-                        get: { state.selectedDeployment },
-                        set: { value in Task { await state.selectDeployment(value) } }
-                    )) {
-                        Text("Select… (\(state.deployments.count))").tag(String?.none)
-                        ForEach(state.deployments) { Text("\($0.name)   \($0.ready)/\($0.desired) ready").tag(Optional($0.name)) }
+                    HStack {
+                        Picker("Deployment", selection: Binding(
+                            get: { state.selectedDeployment },
+                            set: { value in Task { await state.selectDeployment(value) } }
+                        )) {
+                            Text("Select… (\(state.deployments.count))").tag(String?.none)
+                            ForEach(state.deployments) { Text("\($0.name)   \($0.ready)/\($0.desired) ready").tag(Optional($0.name)) }
+                        }
+                        .labelsHidden()
+                        if let name = state.selectedDeployment {
+                            Menu {
+                                Button("Restart…") {
+                                    confirmAndRun(.restartDeployment(name), title: "Restart deployment \(name)?",
+                                                  detail: "Its pods are replaced one by one (rolling restart).", button: "Restart", destructive: false)
+                                }
+                                Button("Delete…", role: .destructive) {
+                                    confirmAndRun(.deleteDeployment(name), title: "Delete deployment \(name)?",
+                                                  detail: "The deployment and all its pods are removed.", button: "Delete", destructive: true)
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis.circle")
+                            }
+                            .menuStyle(.borderlessButton)
+                            .fixedSize()
+                            .help("Deployment actions")
+                        }
                     }
-                    .labelsHidden()
                 }
             }
         }
@@ -186,16 +205,26 @@ struct KubarApp: App {
             ScrollView {
                 VStack(spacing: 0) {
                     ForEach(state.pods) { pod in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(pod.name)
-                                .font(.callout.weight(.semibold))
-                            (Text("\(pod.ok ? "●" : "○") \(pod.status)").foregroundColor(pod.ok ? .green : .orange)
-                                + Text("  ·  \(pod.ready) ready  ·  \(pod.restarts) restarts  ·  node \(pod.node)").foregroundColor(.secondary))
-                                .font(.caption)
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(pod.name)
+                                    .font(.callout.weight(.semibold))
+                                (Text("\(pod.ok ? "●" : "○") \(pod.status)").foregroundColor(pod.ok ? .green : .orange)
+                                    + Text("  ·  \(pod.ready) ready  ·  \(pod.restarts) restarts  ·  node \(pod.node)").foregroundColor(.secondary))
+                                    .font(.caption)
+                            }
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            Button {
+                                confirmAndRun(.deletePod(pod.name), title: "Delete pod \(pod.name)?",
+                                              detail: "Its deployment creates a replacement, so this restarts the pod.", button: "Delete", destructive: true)
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.borderless)
+                            .help("Delete pod (restarts it)")
                         }
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                         .frame(height: 38, alignment: .topLeading)
                         .textSelection(.enabled)
                     }
@@ -232,6 +261,27 @@ struct KubarApp: App {
                     .textSelection(.enabled)
                 if let hint = ConnectionHint.suggest(for: message) { hintView(hint) }
             }
+        }
+    }
+
+    /// Asks for confirmation (showing the context and namespace, since this changes the cluster), then runs the action.
+    private func confirmAndRun(_ action: KubarState.WorkloadAction, title: String, detail: String, button: String, destructive: Bool) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = "\(detail)\n\nContext: \(state.selectedContext ?? "?")\nNamespace: \(state.selectedNamespace ?? "?")"
+        alert.alertStyle = destructive ? .critical : .warning
+        let confirm = alert.addButton(withTitle: button)
+        confirm.hasDestructiveAction = destructive
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        Task {
+            guard let error = await state.perform(action) else { return }
+            let failure = NSAlert()
+            failure.messageText = "\(button) failed"
+            failure.informativeText = error
+            failure.alertStyle = .warning
+            failure.runModal()
         }
     }
 

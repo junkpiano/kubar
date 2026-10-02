@@ -122,6 +122,25 @@ final class KubarState: ObservableObject {
         }
     }
 
+    enum WorkloadAction {
+        case restartDeployment(String)
+        case deleteDeployment(String)
+        case deletePod(String)
+    }
+
+    /// Runs a change in the selected context/namespace, then refreshes. Returns an error message on failure.
+    func perform(_ action: WorkloadAction) async -> String? {
+        guard let context = selectedContext, let ns = selectedNamespace else { return "no namespace selected" }
+        let error: String?
+        switch action {
+        case .restartDeployment(let name): error = await KubeClient.restartDeployment(context, namespace: ns, name: name)
+        case .deleteDeployment(let name): error = await KubeClient.deleteDeployment(context, namespace: ns, name: name)
+        case .deletePod(let name): error = await KubeClient.deletePod(context, namespace: ns, name: name)
+        }
+        await refreshStatus(silent: true)
+        return error
+    }
+
     private static func key(_ kind: String, _ context: String) -> String { "KubarSelected\(kind):\(context)" }
 
     /// Deployments of the selected namespace, plus the pods of the selected deployment.

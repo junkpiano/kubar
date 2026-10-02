@@ -48,4 +48,32 @@ public enum KubeClient {
     public static func pods(_ context: String, namespace: String, selector: String) async -> [PodInfo] {
         PodInfo.parse(await output(context, ["get", "pods", "-n", namespace, "-l", selector, "-o", "json"]))
     }
+
+    // MARK: Actions that change the cluster
+
+    /// Runs a kubectl command that modifies the cluster. Returns nil on success, otherwise the error text.
+    public static func perform(_ context: String, _ args: [String]) async -> String? {
+        switch await KubectlRunner.run(arguments: ["--context", context] + args, timeout: 20) {
+        case .binaryNotFound: return "kubectl not found"
+        case .timedOut: return "timed out"
+        case .completed(0, _, _): return nil
+        case .completed(let exitCode, _, let stderr):
+            let trimmed = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? "exit code \(exitCode)" : trimmed
+        }
+    }
+
+    /// Rolling restart; pods are replaced gradually.
+    public static func restartDeployment(_ context: String, namespace: String, name: String) async -> String? {
+        await perform(context, ["rollout", "restart", "deployment/\(name)", "-n", namespace])
+    }
+
+    public static func deleteDeployment(_ context: String, namespace: String, name: String) async -> String? {
+        await perform(context, ["delete", "deployment", name, "-n", namespace, "--wait=false"])
+    }
+
+    /// A pod owned by a deployment is recreated by its ReplicaSet, so this doubles as "restart pod".
+    public static func deletePod(_ context: String, namespace: String, name: String) async -> String? {
+        await perform(context, ["delete", "pod", name, "-n", namespace, "--wait=false"])
+    }
 }
