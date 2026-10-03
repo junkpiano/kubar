@@ -74,8 +74,6 @@ enum KubectlRunner {
 
         return await withCheckedContinuation { continuation in
             let lock = NSLock()
-            var stdoutData = Data()
-            var stderrData = Data()
             var resumed = false
 
             func resume(_ result: Result) {
@@ -86,48 +84,75 @@ enum KubectlRunner {
                 continuation.resume(returning: result)
             }
 
-            stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
-                let chunk = handle.availableData
-                lock.lock(); stdoutData.append(chunk); lock.unlock()
-            }
-            stderrPipe.fileHandleForReading.readabilityHandler = { handle in
-                let chunk = handle.availableData
-                lock.lock(); stderrData.append(chunk); lock.unlock()
-            }
-
-            process.terminationHandler = { _ in
-                stdoutPipe.fileHandleForReading.readabilityHandler = nil
-                stderrPipe.fileHandleForReading.readabilityHandler = nil
-                let remainingOut = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-                let remainingErr = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-                lock.lock()
-                stdoutData.append(remainingOut)
-                stderrData.append(remainingErr)
-                let out = String(data: stdoutData, encoding: .utf8) ?? ""
-                let err = String(data: stderrData, encoding: .utf8) ?? ""
-                lock.unlock()
-                resume(.completed(exitCode: process.terminationStatus, stdout: out, stderr: err))
-            }
-
-            do {
-                try process.run()
-            } catch {
-                resume(.binaryNotFound)
-                return
-            }
-
-            DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
-                if process.isRunning {
-                    stdoutPipe.fileHandleForReading.readabilityHandler = nil
-                    stderrPipe.fileHandleForReading.readabilityHandler = nil
-                    #if os(Windows)
-                    process.terminate()
-                    #else
-                    kill(process.processIdentifier, SIGKILL)
-                    #endif
-                    resume(.timedOut)
+            runners.submit {
+                do {
+                    try process.run()
+                } catch {
+                    resume(.binaryNotFound)
+                    return
                 }
+                DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
+                    if process.isRunning {
+                        #if os(Windows)
+                        process.terminate()
+                        #else
+                        kill(process.processIdentifier, SIGKILL)
+                        #endif
+                        resume(.timedOut)
+                    }
+                }
+                // Read both pipes to the end at the same time, so a full pipe never blocks kubectl.
+                var stderrData = Data()
+                let stderrRead = DispatchSemaphore(value: 0)
+                readers.submit {
+                    stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+                    stderrRead.signal()
+                }
+                let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+                stderrRead.wait()
+                process.waitUntilExit()
+                resume(.completed(exitCode: process.terminationStatus,
+                                  stdout: String(decoding: stdoutData, as: UTF8.self),
+                                  stderr: String(decoding: stderrData, as: UTF8.self)))
             }
         }
+    }
+
+    // On Windows, Foundation leaves handles behind for Process use on threads that end: waitUntilExit's
+    // run loop (an event and a timer) is never freed with its thread, and without waitUntilExit the
+    // Process and its pipes are never freed at all (terminationHandler too; it also starts a Thread per
+    // exit). So every Process call happens on a few threads that never end: runners start kubectl, read
+    // stdout and wait; readers read stderr meanwhile. At most four kubectl run at once; more wait their turn.
+    private static let runners = Workers(count: 4, name: "kubectl")
+    private static let readers = Workers(count: 4, name: "kubectl stderr")
+}
+
+/// A fixed set of long-lived threads that run submitted jobs in order.
+final class Workers: @unchecked Sendable {
+    private let lock = NSLock()
+    private var jobs: [() -> Void] = []
+    private let pending = DispatchSemaphore(value: 0)
+
+    init(count: Int, name: String) {
+        for i in 1...count {
+            let thread = Thread { [self] in
+                while true {
+                    pending.wait()
+                    lock.lock()
+                    let job = jobs.removeFirst()
+                    lock.unlock()
+                    job()
+                }
+            }
+            thread.name = "\(name) \(i)"
+            thread.start()
+        }
+    }
+
+    func submit(_ job: @escaping () -> Void) {
+        lock.lock()
+        jobs.append(job)
+        lock.unlock()
+        pending.signal()
     }
 }
