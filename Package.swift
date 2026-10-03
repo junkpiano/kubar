@@ -10,9 +10,19 @@ let package = Package(
     products: [
         .library(name: "KubarCore", targets: ["KubarCore"]),
         .executable(name: "kubar", targets: ["kubar"]),
+        .executable(name: "KubarTray", targets: ["KubarTray"]),
     ],
     targets: [
         .executableTarget(name: "kubar", dependencies: ["KubarCore"], path: "Sources/kubar"),
+        // Windows tray app (Win32 via WinSDK). On other platforms it builds to a stub that says so.
+        .executableTarget(
+            name: "KubarTray", dependencies: ["KubarCore"], path: "Sources/KubarTray",
+            resources: [.copy("kubar.ico")],
+            linkerSettings: [
+                // A GUI program: no console window when started from Explorer or at sign-in.
+                .unsafeFlags(["-Xlinker", "/SUBSYSTEM:WINDOWS", "-Xlinker", "/ENTRY:mainCRTStartup"], .when(platforms: [.windows])),
+            ]
+        ),
         .target(name: "KubarCore"),
         .testTarget(name: "KubarCoreTests", dependencies: ["KubarCore"], path: "Tests/KubarCoreTests"),
     ]

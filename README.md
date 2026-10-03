@@ -32,6 +32,22 @@ swift run kubar -c <context> -w nodes          # pick a context, refresh every 1
 
 Run `swift test` to test the core.
 
+## Windows tray app
+
+`KubarTray` puts the same menu in the Windows notification area (context, nodes, namespace → deployment → pods,
+restart and delete with confirmation), built on `KubarCore` and Win32. Build it with the Swift toolchain for Windows
+(`winget install Swift.Toolchain`) in a Developer PowerShell for Visual Studio, so `link.exe` and the Windows SDK are found:
+
+```powershell
+swift build -c release
+.build\release\KubarTray.exe
+```
+
+It needs the Swift runtime DLLs: install the Swift runtime, or copy them next to `KubarTray.exe`.
+
+Windows 11 24H2 or later runs kubectl without a console window (`AllocConsoleWithOptions`); on earlier
+versions a console may flash once at startup.
+
 ## License
 
 [MIT](LICENSE). Kubar runs the separately installed `kubectl` (Apache-2.0) as an external program and does not include or redistribute any of its code.
