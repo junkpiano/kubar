@@ -300,11 +300,12 @@ let model = Model()
 createPopup()
 notifyIcon(DWORD(NIM_ADD))
 model.refreshSoon(reselect: true)
-// Watch mode: refresh every 10s in the background. ponytail: fixed poll, like the macOS app.
+// Watch mode: refresh every 10s while the popup is open, like the macOS app. While it's closed nothing
+// runs kubectl (opening it refreshes at once), so the tooltip shows the status from the last time it was open.
 Task.detached {
     while true {
         try? await Task.sleep(nanoseconds: 10_000_000_000)
-        model.refreshSoon()
+        if IsWindowVisible(popup) { model.refreshSoon() }
     }
 }
 
