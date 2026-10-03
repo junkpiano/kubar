@@ -15,9 +15,14 @@ enum KubectlRunner {
     static let binaryName = "kubectl"
     #endif
 
+    /// The PATH value. Windows names it `Path`, and environment keys are case-insensitive there but not in a Swift dictionary.
+    static func pathVariable(_ environment: [String: String]) -> String? {
+        environment["PATH"] ?? environment.first { $0.key.uppercased() == "PATH" }?.value
+    }
+
     static func resolveBinaryPath(
         candidates: [String] = candidatePaths,
-        pathEnvironment: String? = ProcessInfo.processInfo.environment["PATH"],
+        pathEnvironment: String? = pathVariable(ProcessInfo.processInfo.environment),
         fileExists: (String) -> Bool = { FileManager.default.isExecutableFile(atPath: $0) }
     ) -> String? {
         for candidate in candidates where fileExists(candidate) {
@@ -33,16 +38,13 @@ enum KubectlRunner {
         return nil
     }
 
-    /// GUI apps start with a minimal PATH (/usr/bin:/bin...), so kubectl's credential plugins
-    /// (gcloud, aws, az...) can't be found. Append the usual install locations. No-op on Windows.
+    /// macOS GUI apps start with a minimal PATH (/usr/bin:/bin...), so kubectl's credential plugins
+    /// (gcloud, aws, az...) can't be found. Append the usual install locations. Not used on Windows,
+    /// where GUI apps get the full PATH.
     static func augmentedPath(_ current: String?, home: String = NSHomeDirectory()) -> String {
-        #if os(Windows)
-        return current ?? ""
-        #else
         let existing = (current ?? "").split(separator: ":").map(String.init)
         let extras = ["/opt/homebrew/bin", "/usr/local/bin", "\(home)/google-cloud-sdk/bin", "\(home)/.local/bin"]
         return (existing + extras.filter { !existing.contains($0) }).joined(separator: ":")
-        #endif
     }
 
     enum Result {
@@ -59,9 +61,11 @@ enum KubectlRunner {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: binaryPath)
         process.arguments = arguments
+        #if !os(Windows)  // on Windows, setting "PATH" would add a second, separate variable next to "Path"
         var environment = ProcessInfo.processInfo.environment
         environment["PATH"] = augmentedPath(environment["PATH"])
         process.environment = environment
+        #endif
 
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()

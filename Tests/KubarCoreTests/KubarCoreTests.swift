@@ -126,6 +126,10 @@ final class KubarCoreTests: XCTestCase {
     }
 
     func testAugmentedPath() {
+        XCTAssertEqual(KubectlRunner.pathVariable(["Path": "C:\\bin"]), "C:\\bin")  // Windows spelling
+        XCTAssertEqual(KubectlRunner.pathVariable(["PATH": "/bin", "Path": "x"]), "/bin")
+        XCTAssertNil(KubectlRunner.pathVariable(["HOME": "/h"]))
+
         #if !os(Windows)
         let path = KubectlRunner.augmentedPath("/usr/bin:/bin:/opt/homebrew/bin", home: "/Users/me")
         XCTAssertEqual(path, "/usr/bin:/bin:/opt/homebrew/bin:/usr/local/bin:/Users/me/google-cloud-sdk/bin:/Users/me/.local/bin")
