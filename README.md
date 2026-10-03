@@ -34,8 +34,10 @@ Run `swift test` to test the core.
 
 ## Windows tray app
 
-`KubarTray` puts the same menu in the Windows notification area (context, nodes, namespace → deployment → pods,
-restart and delete with confirmation), built on `KubarCore` and Win32. Build it with the Swift toolchain for Windows
+`KubarTray` adds Kubar to the Windows notification area, built on `KubarCore` and Win32. Left-click the icon for a
+popup with the same things as the macOS app (context, nodes with usage, namespace → deployment → pods, restart and
+delete with confirmation; double-click a node for `kubectl describe`). Drag its header to move it and its edges to
+resize it; it reopens where you left it. Right-click for Refresh and Quit. Build it with the Swift toolchain for Windows
 (`winget install Swift.Toolchain`) in a Developer PowerShell for Visual Studio, so `link.exe` and the Windows SDK are found:
 
 ```powershell

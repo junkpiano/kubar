@@ -19,8 +19,14 @@ let package = Package(
             name: "KubarTray", dependencies: ["KubarCore"], path: "Sources/KubarTray",
             resources: [.copy("kubar.ico")],
             linkerSettings: [
-                // A GUI program: no console window when started from Explorer or at sign-in.
-                .unsafeFlags(["-Xlinker", "/SUBSYSTEM:WINDOWS", "-Xlinker", "/ENTRY:mainCRTStartup"], .when(platforms: [.windows])),
+                .linkedLibrary("comctl32", .when(platforms: [.windows])),
+                // A GUI program: no console window when started from Explorer or at sign-in. The manifest asks for
+                // Common Controls v6, which gives the popup's lists, drop-downs and buttons the current Windows look.
+                .unsafeFlags([
+                    "-Xlinker", "/SUBSYSTEM:WINDOWS", "-Xlinker", "/ENTRY:mainCRTStartup",
+                    "-Xlinker", "/MANIFEST:EMBED",
+                    "-Xlinker", "/MANIFESTDEPENDENCY:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'",
+                ], .when(platforms: [.windows])),
             ]
         ),
         .target(name: "KubarCore"),

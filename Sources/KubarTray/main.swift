@@ -1,5 +1,6 @@
-// Kubar for Windows: a notification-area (tray) icon whose menu shows the same things as the macOS
-// menu bar app, built on KubarCore and plain Win32 (WinSDK). Left or right click opens the menu.
+// Kubar for Windows: a notification-area (tray) icon that opens a popup window with the same things as the
+// macOS menu bar app, built on KubarCore and plain Win32 (WinSDK). Left click opens the popup (Popup.swift);
+// right click shows Refresh and Quit.
 #if os(Windows)
 import Foundation
 import KubarCore
@@ -7,8 +8,8 @@ import WinSDK
 
 // MARK: Model
 
-/// What the menu shows. Background tasks write it under `lock`; the UI thread reads a copy when the menu opens,
-/// so the menu never waits on kubectl.
+/// What the popup shows. Background tasks write it under `lock`; the UI thread reads a copy,
+/// so the window never waits on kubectl.
 struct Snapshot {
     var contexts: [String] = []
     var currentContext: String?
@@ -38,7 +39,7 @@ final class Model: @unchecked Sendable {
 
     private func change(_ body: (inout Snapshot) -> Void) {
         lock.lock(); body(&state); lock.unlock()
-        PostMessageW(window, UINT(WM_APP + 2), 0, 0)  // update the tooltip on the UI thread
+        PostMessageW(window, stateChanged, 0, 0)  // update the tooltip and popup on the UI thread
     }
 
     private func bump() -> Int {
@@ -52,8 +53,7 @@ final class Model: @unchecked Sendable {
         return gen == generation
     }
 
-    @discardableResult
-    func selectContext(_ name: String) -> Int {
+    func selectContext(_ name: String) {
         defaults.set(name, forKey: "KubarSelectedContext")
         change {
             $0.selectedContext = name
@@ -61,35 +61,27 @@ final class Model: @unchecked Sendable {
             $0.nodes = []; $0.namespaces = []
             $0.selectedNamespace = nil; $0.deployments = []; $0.selectedDeployment = nil; $0.pods = []
         }
-        return refreshSoon(reselect: true)
+        refreshSoon(reselect: true)
     }
 
-    @discardableResult
-    func selectNamespace(_ name: String?) -> Int {
-        guard let context = snapshot.selectedContext else { return 0 }
+    func selectNamespace(_ name: String?) {
+        guard let context = snapshot.selectedContext else { return }
         defaults.set(name, forKey: Self.key("Namespace", context))
         defaults.removeObject(forKey: Self.key("Deployment", context))
         change { $0.selectedNamespace = name; $0.deployments = []; $0.selectedDeployment = nil; $0.pods = [] }
-        return refreshSoon()
+        refreshSoon()
     }
 
-    @discardableResult
-    func selectDeployment(_ name: String?) -> Int {
-        guard let context = snapshot.selectedContext else { return 0 }
+    func selectDeployment(_ name: String?) {
+        guard let context = snapshot.selectedContext else { return }
         defaults.set(name, forKey: Self.key("Deployment", context))
         change { $0.selectedDeployment = name; $0.pods = [] }
-        return refreshSoon()
+        refreshSoon()
     }
 
-    /// Starts a refresh and returns its generation; when it ends, the window gets refreshDone with it.
-    @discardableResult
-    func refreshSoon(reselect: Bool = false) -> Int {
+    func refreshSoon(reselect: Bool = false) {
         let gen = bump()
-        Task.detached {
-            await self.refresh(gen, reselect: reselect)
-            PostMessageW(window, refreshDone, WPARAM(gen), 0)
-        }
-        return gen
+        Task.detached { await self.refresh(gen, reselect: reselect) }
     }
 
     /// Reloads the contexts (cheap, and picks up kubeconfig edits), then checks the selected one and everything under it.
@@ -167,21 +159,8 @@ final class Model: @unchecked Sendable {
     }
 }
 
-// MARK: Win32 helpers
 
-/// Splits text into menu lines of at most `width` characters at spaces, keeping the first `maxLines`
-/// (menu items can't wrap on their own).
-func wrap(_ text: String, width: Int = 80, maxLines: Int = 3) -> [String] {
-    var lines: [String] = []
-    var line = ""
-    for word in text.split(whereSeparator: \.isWhitespace) {
-        if !line.isEmpty && line.count + 1 + word.count > width { lines.append(line); line = "" }
-        line += (line.isEmpty ? "" : " ") + word
-    }
-    if !line.isEmpty { lines.append(line) }
-    if lines.count > maxLines { lines = Array(lines.prefix(maxLines)); lines[maxLines - 1] += " …" }
-    return lines
-}
+// MARK: Win32 helpers
 
 /// A NUL-terminated UTF-16 copy for Win32 `LPCWSTR` parameters.
 func wide(_ s: String) -> [WCHAR] { Array(s.utf16) + [0] }
@@ -198,145 +177,12 @@ func copyToClipboard(_ text: String) {
     SetClipboardData(UINT(CF_UNICODETEXT), handle)
 }
 
-func confirm(_ title: String, _ detail: String) -> Bool {
-    let s = model.snapshot
-    let text = "\(detail)\n\nContext: \(s.selectedContext ?? "?")\nNamespace: \(s.selectedNamespace ?? "?")"
-    return MessageBoxW(window, wide(text), wide(title), UINT(MB_OKCANCEL | MB_ICONWARNING | MB_DEFBUTTON2)) == IDOK
-}
-
-// MARK: Menu
-
-/// Builds the popup menu from a snapshot; each clickable item gets an id mapped to what it does.
-final class MenuBuilder {
-    var actions: [UINT_PTR: () -> Void] = [:]
-    private var nextID: UINT_PTR = 1
-
-    func item(_ menu: HMENU, _ title: String, checked: Bool = false, disabled: Bool = false, _ action: (() -> Void)? = nil) {
-        var flags = UINT(MF_STRING)
-        if checked { flags |= UINT(MF_CHECKED) }
-        if disabled { flags |= UINT(MF_GRAYED) }
-        var id: UINT_PTR = 0
-        if let action { id = nextID; nextID += 1; actions[id] = action }
-        AppendMenuW(menu, flags, id, wide(title))
-    }
-
-    func submenu(_ menu: HMENU, _ title: String, disabled: Bool = false, _ fill: (HMENU) -> Void) {
-        let sub = CreatePopupMenu()!
-        fill(sub)
-        AppendMenuW(menu, UINT(MF_POPUP) | (disabled ? UINT(MF_GRAYED) : 0), UINT_PTR(UInt(bitPattern: sub)), wide(title))
-    }
-
-    func separator(_ menu: HMENU) { AppendMenuW(menu, UINT(MF_SEPARATOR), 0, nil) }
-
-    func build(_ s: Snapshot) -> HMENU {
-        let menu = CreatePopupMenu()!
-        if let error = s.loadError {
-            item(menu, "Kubar: \(error)", disabled: true)
-            hint(menu, error)
-        } else {
-            let context = s.selectedContext ?? "-"
-            switch s.status {
-            case .idle: item(menu, "\(context): idle", disabled: true)
-            case .checking: item(menu, "\(context): checking…", disabled: true)
-            case .connected: item(menu, "● \(context): connected", disabled: true)
-            case .checkFailed(let message):
-                item(menu, "○ \(context): check failed", disabled: true)
-                for line in wrap(message) { item(menu, "    " + line, disabled: true) }
-                hint(menu, message)
-            }
-            separator(menu)
-            submenu(menu, "Context") { sub in
-                for c in s.contexts {
-                    item(sub, c + (c == s.currentContext ? "  (current)" : ""), checked: c == s.selectedContext) { reopenAfter(model.selectContext(c)) }
-                }
-            }
-            submenu(menu, "Nodes (\(s.nodes.count))", disabled: s.nodes.isEmpty) { sub in
-                for n in s.nodes {
-                    let usage = n.usage.map { "CPU \($0.cpu) \($0.cpuPct)%  ·  Mem \($0.mem) \($0.memPct)%" } ?? "metrics unavailable"
-                    item(sub, "\(n.ready ? "●" : "○") \(n.name)\t\(usage)")
-                }
-            }
-            workloads(menu, s)
-        }
-        separator(menu)
-        item(menu, "Refresh") { model.refreshSoon() }
-        item(menu, "Quit Kubar") { quit() }
-        return menu
-    }
-
-    // Namespace -> deployment -> pods: each level narrows the one above, like the macOS app.
-    private func workloads(_ menu: HMENU, _ s: Snapshot) {
-        guard !s.namespaces.isEmpty else { return }
-        separator(menu)
-        submenu(menu, "Namespace: \(s.selectedNamespace ?? "select…")") { sub in
-            item(sub, "None", checked: s.selectedNamespace == nil) { reopenAfter(model.selectNamespace(nil)) }
-            for ns in s.namespaces { item(sub, ns, checked: ns == s.selectedNamespace) { reopenAfter(model.selectNamespace(ns)) } }
-        }
-        guard let ns = s.selectedNamespace else { return }
-        guard !s.deployments.isEmpty else { item(menu, "No deployments in \(ns)", disabled: true); return }
-        submenu(menu, "Deployment: \(s.selectedDeployment ?? "select…")") { sub in
-            item(sub, "None", checked: s.selectedDeployment == nil) { reopenAfter(model.selectDeployment(nil)) }
-            for d in s.deployments {
-                item(sub, "\(d.name)\t\(d.ready)/\(d.desired) ready", checked: d.name == s.selectedDeployment) { reopenAfter(model.selectDeployment(d.name)) }
-            }
-        }
-        guard let dep = s.selectedDeployment else { return }
-        submenu(menu, "Pods of \(dep) (\(s.pods.count))", disabled: s.pods.isEmpty) { sub in
-            for p in s.pods {
-                submenu(sub, "\(p.ok ? "●" : "○") \(p.name)\t\(p.status) · \(p.ready) · \(p.restarts) restarts") { podMenu in
-                    item(podMenu, "Node: \(p.node)", disabled: true)
-                    item(podMenu, "Delete (restarts it)…") {
-                        if confirm("Delete pod \(p.name)?", "Its deployment creates a replacement, so this restarts the pod.") { model.perform(.deletePod(p.name)) }
-                    }
-                }
-            }
-        }
-        item(menu, "Restart \(dep)…") {
-            if confirm("Restart deployment \(dep)?", "Its pods are replaced one by one (rolling restart).") { model.perform(.restartDeployment(dep)) }
-        }
-        item(menu, "Delete \(dep)…") {
-            if confirm("Delete deployment \(dep)?", "The deployment and all its pods are removed.") { model.perform(.deleteDeployment(dep)) }
-        }
-    }
-
-    private func hint(_ menu: HMENU, _ message: String) {
-        guard let hint = ConnectionHint.suggest(for: message) else { return }
-        item(menu, "💡 " + hint.text, disabled: true)
-        if let command = hint.command { item(menu, "Copy: \(command)") { copyToClipboard(command) } }
-    }
-}
-
-/// The open menu's actions; the chosen item arrives afterwards as WM_COMMAND with its id.
-/// (TrackPopupMenu's TPM_RETURNCMD can't be used: Swift imports its BOOL result as Bool, losing the id.)
-var menuActions: [UINT_PTR: () -> Void] = [:]
-
-/// A Win32 menu always closes when an item is chosen. After picking a context, namespace or deployment,
-/// open it again where it was once that choice has loaded, so drilling down doesn't mean clicking the icon each time.
-var lastMenuPoint = POINT()
-var pendingReopen: (gen: Int, deadline: Date)?
-
-func reopenAfter(_ gen: Int) {
-    pendingReopen = (gen, Date().addingTimeInterval(8))  // a slow cluster: don't pop up out of nowhere later
-}
-
-func showMenu(at fixedPoint: POINT? = nil) {
-    let builder = MenuBuilder()
-    let menu = builder.build(model.snapshot)
-    defer { DestroyMenu(menu) }
-    menuActions = builder.actions
-    var point = POINT()
-    if let fixedPoint { point = fixedPoint } else { GetCursorPos(&point) }
-    lastMenuPoint = point
-    SetForegroundWindow(window)  // otherwise the menu doesn't close when you click elsewhere
-    TrackPopupMenu(menu, UINT(TPM_RIGHTBUTTON), point.x, point.y, 0, window, nil)
-    PostMessageW(window, UINT(WM_NULL), 0, 0)
-}
-
 // MARK: Tray icon
 
 let trayMessage = UINT(WM_APP + 1)
-let refreshDone = UINT(WM_APP + 3)
+let stateChanged = UINT(WM_APP + 2)
 let taskbarCreated = RegisterWindowMessageW(wide("TaskbarCreated"))
+let menuRefresh: UINT_PTR = 1, menuQuit: UINT_PTR = 2, menuResetPosition: UINT_PTR = 3
 
 func trayIcon() -> HICON? {
     let size = GetSystemMetrics(SM_CXSMICON)
@@ -357,18 +203,33 @@ func notifyIcon(_ message: DWORD) {
     data.uFlags = UINT(NIF_MESSAGE | NIF_ICON | NIF_TIP)
     data.uCallbackMessage = trayMessage
     data.hIcon = icon
-    let s = model.snapshot
-    var tip = "Kubar"
-    if let context = s.selectedContext {
-        switch s.status {
-        case .connected: tip += " · \(context): connected"
-        case .checkFailed: tip += " · \(context): check failed"
-        default: tip += " · \(context)"
-        }
-    }
-    let chars = Array(tip.utf16.prefix(127)) + [0]  // szTip holds 128 WCHARs
+    let chars = Array(statusLine(model.snapshot).utf16.prefix(127)) + [0]  // szTip holds 128 WCHARs
     chars.withUnsafeBytes { src in withUnsafeMutableBytes(of: &data.szTip) { $0.copyMemory(from: src) } }
     Shell_NotifyIconW(message, &data)
+}
+
+/// The tray tooltip, e.g. "Kubar · my-cluster: connected".
+func statusLine(_ s: Snapshot) -> String {
+    guard let context = s.selectedContext, s.loadError == nil else { return "Kubar" }
+    switch s.status {
+    case .connected: return "Kubar · \(context): connected"
+    case .checkFailed: return "Kubar · \(context): check failed"
+    case .checking: return "Kubar · \(context): checking…"
+    case .idle: return "Kubar · \(context)"
+    }
+}
+
+func showTrayMenu() {
+    let menu = CreatePopupMenu()!
+    defer { DestroyMenu(menu) }
+    AppendMenuW(menu, UINT(MF_STRING), menuRefresh, wide("Refresh"))
+    AppendMenuW(menu, UINT(MF_STRING) | (savedFrame() == nil ? UINT(MF_GRAYED) : 0), menuResetPosition, wide("Reset window position"))
+    AppendMenuW(menu, UINT(MF_STRING), menuQuit, wide("Quit Kubar"))
+    var point = POINT()
+    GetCursorPos(&point)
+    SetForegroundWindow(window)  // otherwise the menu doesn't close when you click elsewhere
+    TrackPopupMenu(menu, UINT(TPM_RIGHTBUTTON), point.x, point.y, 0, window, nil)  // the choice arrives as WM_COMMAND
+    PostMessageW(window, UINT(WM_NULL), 0, 0)
 }
 
 func quit() {
@@ -379,20 +240,23 @@ func quit() {
 func windowProc(_ hwnd: HWND?, _ message: UINT, _ wParam: WPARAM, _ lParam: LPARAM) -> LRESULT {
     switch message {
     case trayMessage:
-        let event = UINT(lParam & 0xFFFF)
-        if event == UINT(WM_LBUTTONUP) || event == UINT(WM_RBUTTONUP) { showMenu() }
-        return 0
-    case UINT(WM_COMMAND):
-        menuActions[UINT_PTR(wParam & 0xFFFF)]?()
-        return 0
-    case refreshDone:
-        if let pending = pendingReopen, Int(wParam) >= pending.gen {  // or a newer refresh (the 10s poll) that replaced it
-            pendingReopen = nil
-            if Date() < pending.deadline { showMenu(at: lastMenuPoint) }
+        switch UINT(lParam & 0xFFFF) {
+        case UINT(WM_LBUTTONUP): togglePopup()
+        case UINT(WM_RBUTTONUP): showTrayMenu()
+        default: break
         }
         return 0
-    case UINT(WM_APP + 2):
+    case UINT(WM_COMMAND):
+        switch UINT_PTR(wParam & 0xFFFF) {
+        case menuRefresh: model.refreshSoon()
+        case menuQuit: quit()
+        case menuResetPosition: resetFrame()
+        default: break
+        }
+        return 0
+    case stateChanged:
         notifyIcon(DWORD(NIM_MODIFY))
+        updatePopup()
         return 0
     case taskbarCreated:  // Explorer restarted: put the icon back
         notifyIcon(DWORD(NIM_ADD))
@@ -420,7 +284,7 @@ func attachHiddenConsole() {
 }
 
 attachHiddenConsole()
-SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT(bitPattern: -4))  // per-monitor v2: sharp menu text
+SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT(bitPattern: -4))  // per-monitor v2: sharp text
 
 let instance = GetModuleHandleW(nil)
 let className = wide("KubarTray")
@@ -433,6 +297,7 @@ className.withUnsafeBufferPointer { windowClass.lpszClassName = $0.baseAddress; 
 let window = CreateWindowExW(0, className, wide("Kubar"), 0, 0, 0, 0, 0, nil, nil, instance, nil)
 let model = Model()
 
+createPopup()
 notifyIcon(DWORD(NIM_ADD))
 model.refreshSoon(reselect: true)
 // Watch mode: refresh every 10s in the background. ponytail: fixed poll, like the macOS app.
@@ -445,6 +310,14 @@ Task.detached {
 
 var msg = MSG()
 while GetMessageW(&msg, nil, 0, 0) {  // false on WM_QUIT
+    // Shift+wheel scrolls sideways (the list and text controls only know the plain wheel).
+    if msg.message == UINT(WM_MOUSEWHEEL), GetKeyState(Int32(VK_SHIFT)) < 0 {
+        let delta = Int16(truncatingIfNeeded: (msg.wParam >> 16) & 0xFFFF)
+        for _ in 0..<3 { SendMessageW(msg.hwnd, UINT(WM_HSCROLL), delta > 0 ? 0 /* SB_LINELEFT */ : 1 /* SB_LINERIGHT */, 0) }
+        continue
+    }
+    // Tab and arrow keys between the popup's controls.
+    if let popup, IsDialogMessageW(popup, &msg) { continue }
     TranslateMessage(&msg)
     DispatchMessageW(&msg)
 }
