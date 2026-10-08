@@ -45,8 +45,9 @@ public enum KubeClient {
         DeploymentInfo.parse(await output(context, ["get", "deployments", "-n", namespace, "-o", "json"]))
     }
 
-    public static func pods(_ context: String, namespace: String, selector: String) async -> [PodInfo] {
-        PodInfo.parse(await output(context, ["get", "pods", "-n", namespace, "-l", selector, "-o", "json"]))
+    /// Pods matching the selector, or every pod in the namespace when it's nil.
+    public static func pods(_ context: String, namespace: String, selector: String? = nil) async -> [PodInfo] {
+        PodInfo.parse(await output(context, ["get", "pods", "-n", namespace, "-o", "json"] + (selector.map { ["-l", $0] } ?? [])))
     }
 
     // MARK: Actions that change the cluster

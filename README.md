@@ -26,7 +26,7 @@ swift run kubar                                # status + nodes for the current 
 swift run kubar contexts
 swift run kubar namespaces
 swift run kubar deployments -n <namespace>
-swift run kubar pods -n <namespace> -d <deployment>
+swift run kubar pods -n <namespace> [-d <deployment>]
 swift run kubar -c <context> -w nodes          # pick a context, refresh every 10s
 ```
 

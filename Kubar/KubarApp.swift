@@ -139,7 +139,7 @@ struct KubarApp: App {
         .contentShape(Rectangle())
     }
 
-    // Context -> namespace -> deployment -> pods: each level narrows the one above.
+    // Context -> namespace -> pods; picking a deployment narrows the pods to its own.
     @ViewBuilder
     private var workloadViews: some View {
         if !state.namespaces.isEmpty {
@@ -167,7 +167,7 @@ struct KubarApp: App {
                             get: { state.selectedDeployment },
                             set: { value in Task { await state.selectDeployment(value) } }
                         )) {
-                            Text("Select… (\(state.deployments.count))").tag(String?.none)
+                            Text("All pods (\(state.deployments.count) deployments)").tag(String?.none)
                             ForEach(state.deployments) { Text("\($0.name)   \($0.ready)/\($0.desired) ready").tag(Optional($0.name)) }
                         }
                         .labelsHidden()
@@ -192,8 +192,8 @@ struct KubarApp: App {
                 }
             }
         }
-        if let deployment = state.selectedDeployment {
-            header("Pods of \(deployment) (\(state.pods.count))")
+        if state.selectedNamespace != nil {
+            header(state.selectedDeployment.map { "Pods of \($0) (\(state.pods.count))" } ?? "Pods (\(state.pods.count))")
             ScrollView {
                 VStack(spacing: 0) {
                     ForEach(state.pods) { pod in
@@ -210,12 +210,12 @@ struct KubarApp: App {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             Button {
                                 confirmAndRun(.deletePod(pod.name), title: "Delete pod \(pod.name)?",
-                                              detail: "Its deployment creates a replacement, so this restarts the pod.", button: "Delete", destructive: true)
+                                              detail: "If a controller owns it (a deployment, a job…), it creates a replacement.", button: "Delete", destructive: true)
                             } label: {
                                 Image(systemName: "trash")
                             }
                             .buttonStyle(.borderless)
-                            .help("Delete pod (restarts it)")
+                            .help("Delete pod")
                         }
                         .frame(height: 38, alignment: .topLeading)
                         .textSelection(.enabled)

@@ -128,6 +128,7 @@ final class Model: @unchecked Sendable {
                 if let selector = dep.selector { pods = await KubeClient.pods(context, namespace: ns, selector: selector) }
             } else {
                 deployment = nil
+                pods = await KubeClient.pods(context, namespace: ns)
             }
         }
         guard isCurrent(gen) else { return }

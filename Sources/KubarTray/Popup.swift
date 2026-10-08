@@ -377,13 +377,14 @@ func updatePopup() {
     setCombo(.namespace, labels: ["Select… (\(s.namespaces.count))"] + s.namespaces, values: [nil] + s.namespaces, selected: s.selectedNamespace)
     EnableWindow(controls[.namespace], !s.namespaces.isEmpty)
     let deployments = s.deployments
-    let first = s.selectedNamespace == nil ? "" : deployments.isEmpty ? "No deployments" : "Select… (\(deployments.count))"
+    let first = s.selectedNamespace == nil ? "" : deployments.isEmpty ? "No deployments" : "All pods (\(deployments.count) deployments)"
     setCombo(.deployment, labels: [first] + deployments.map { "\($0.name)   \($0.ready)/\($0.desired) ready" },
              values: [nil] + deployments.map(\.name), selected: s.selectedDeployment)
     EnableWindow(controls[.deployment], !deployments.isEmpty)
     EnableWindow(controls[.actions], s.selectedDeployment != nil)
 
-    setText(.podsLabel, s.selectedDeployment.map { "PODS OF \($0) (\(s.pods.count))" } ?? "PODS")
+    setText(.podsLabel, s.selectedDeployment.map { "PODS OF \($0) (\(s.pods.count))" }
+        ?? (s.selectedNamespace == nil ? "PODS" : "PODS (\(s.pods.count))"))
     shownPods = s.pods.map(\.name)
     setRows(.pods, s.pods.map { [($0.ok ? "● " : "○ ") + $0.name, $0.status, $0.ready, String($0.restarts), $0.node] },
             colors: s.pods.map { [$0.ok ? okGreen : warnOrange, $0.ok ? okGreen : warnOrange, nil, $0.restarts > 0 ? warnOrange : nil, nil] })
@@ -429,7 +430,7 @@ func command(_ id: Int32, _ code: Int) {
             return
         }
         let pod = shownPods[row]
-        if confirm("Delete pod \(pod)?", "Its deployment creates a replacement, so this restarts the pod.") { model.perform(.deletePod(pod)) }
+        if confirm("Delete pod \(pod)?", "If a controller owns it (a deployment, a job…), it creates a replacement.") { model.perform(.deletePod(pod)) }
     case Ctl.refresh.rawValue:
         model.refreshSoon()
     case Ctl.quit.rawValue:

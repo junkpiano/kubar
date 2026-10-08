@@ -143,32 +143,28 @@ final class KubarState: ObservableObject {
 
     private static func key(_ kind: String, _ context: String) -> String { "KubarSelected\(kind):\(context)" }
 
-    /// Deployments of the selected namespace, plus the pods of the selected deployment.
+    /// Deployments of the selected namespace, plus its pods: all of them, or those of the selected deployment.
     private func loadWorkloads(_ context: String) async {
         guard let ns = selectedNamespace else { return }
         let token = UUID()
         currentWorkloadToken = token
         let selector = deployments.first { $0.name == selectedDeployment }?.selector
         async let depList = KubeClient.deployments(context, namespace: ns)
-        async let podList = Self.pods(context, ns, selector)
+        async let podList = KubeClient.pods(context, namespace: ns, selector: selector)
         let (fetchedDeployments, fetchedPods) = await (depList, podList)
         guard token == currentWorkloadToken, selectedContext == context, selectedNamespace == ns else { return }
         deployments = fetchedDeployments
         if let selectedDeployment, !deployments.contains(where: { $0.name == selectedDeployment }) {
             self.selectedDeployment = nil
         }
-        pods = selectedDeployment == nil ? [] : fetchedPods
-        // A deployment picked just now has no selector loaded yet: fetch its pods once.
-        if selector == nil, let dep = deployments.first(where: { $0.name == selectedDeployment }), let sel = dep.selector {
+        pods = fetchedPods
+        // A deployment picked just now had no selector loaded yet, so that fetch got the whole namespace: fetch its pods.
+        if selector == nil, let dep = deployments.first(where: { $0.name == selectedDeployment }) {
+            guard let sel = dep.selector else { pods = []; return }  // no matchLabels: its pods can't be listed
             let fetched = await KubeClient.pods(context, namespace: ns, selector: sel)
             guard token == currentWorkloadToken else { return }
             pods = fetched
         }
-    }
-
-    private static func pods(_ context: String, _ ns: String, _ selector: String?) async -> [PodInfo] {
-        guard let selector else { return [] }
-        return await KubeClient.pods(context, namespace: ns, selector: selector)
     }
 
     private func clearWorkloads() {

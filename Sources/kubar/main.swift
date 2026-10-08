@@ -11,7 +11,7 @@ Commands:
   nodes          nodes with CPU/memory usage
   namespaces     list namespaces
   deployments    list deployments        (-n <namespace>)
-  pods           pods of a deployment    (-n <namespace> -d <deployment>)
+  pods           pods of a namespace     (-n <namespace> [-d <deployment>])
 
 Options:
   -c, --context <name>      kubeconfig context (default: current context)
@@ -120,12 +120,16 @@ func runCommand(_ options: Options, _ ctx: String) async -> (String, Bool) {
         if deployments.isEmpty { return ("No deployments in \(namespace)", true) }
         return (table([["DEPLOYMENT", "READY"]] + deployments.map { [$0.name, "\($0.ready)/\($0.desired)"] }), true)
     case "pods":
-        guard let namespace = options.namespace, let deployment = options.deployment else { fail("pods needs -n <namespace> and -d <deployment>", code: 2) }
-        let deployments = await KubeClient.deployments(ctx, namespace: namespace)
-        guard let found = deployments.first(where: { $0.name == deployment }) else {
-            return ("deployment '\(deployment)' not found in \(namespace)", false)
+        guard let namespace = options.namespace else { fail("pods needs -n <namespace>", code: 2) }
+        var selector: String?
+        if let deployment = options.deployment {
+            let deployments = await KubeClient.deployments(ctx, namespace: namespace)
+            guard let found = deployments.first(where: { $0.name == deployment }) else {
+                return ("deployment '\(deployment)' not found in \(namespace)", false)
+            }
+            guard let sel = found.selector else { return ("deployment '\(deployment)' has no matchLabels selector", false) }
+            selector = sel
         }
-        guard let selector = found.selector else { return ("deployment '\(deployment)' has no matchLabels selector", false) }
         let pods = await KubeClient.pods(ctx, namespace: namespace, selector: selector)
         if pods.isEmpty { return ("No pods", true) }
         return (table([["POD", "STATUS", "READY", "RESTARTS", "NODE"]]
