@@ -1,0 +1,47 @@
+name: macOS
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test
+      - name: Build (unsigned)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        run: xcodebuild -project Kubar.xcodeproj -scheme Kubar -configuration Release CODE_SIGNING_ALLOWED=NO build
+
+      - name: Import Developer ID certificate
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: |
+          KC="$RUNNER_TEMP/build.keychain-db" KCPW=$(uuidgen)
+          echo "$CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KCPW" "$KC"
+          security set-keychain-settings -lut 3600 "$KC"
+          security unlock-keychain -p "$KCPW" "$KC"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KC" -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -k "$KCPW" "$KC"
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+      - name: Sign, notarize and package
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool store-credentials kubar --apple-id "${{ secrets.APPLE_ID }}" \
+            --team-id "$TEAM_ID" --password "${{ secrets.APPLE_APP_PASSWORD }}"
+          scripts/release-macos.sh
+      - uses: actions/upload-artifact@v4
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: Kubar.dmg
+          path: build/release/Kubar.dmg

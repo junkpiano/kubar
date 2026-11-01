@@ -17,6 +17,15 @@ Open `Kubar.xcodeproj`, then run the `Kubar` target.
 
 The app uses SwiftUI's `MenuBarExtra` and sets `LSUIElement=YES`, so it appears in the macOS menu bar without a Dock icon.
 
+## Release (macOS)
+
+`TEAM_ID=<team id> scripts/release-macos.sh` builds a Developer ID–signed, notarized `build/release/Kubar.dmg`.
+The script's header lists what it needs.
+
+CI (`.github/workflows/macos.yml`) runs the tests and an unsigned build on every push. A `v*` tag also runs the
+release script and uploads `Kubar.dmg`. It needs the secrets `MACOS_CERT_P12` (base64 of the exported
+Developer ID Application `.p12`), `MACOS_CERT_PASSWORD`, `APPLE_TEAM_ID`, `APPLE_ID` and `APPLE_APP_PASSWORD`.
+
 ## Command line
 
 `kubar` is a cross-platform CLI (macOS, Linux, Windows) built on the same `KubarCore` package. It needs `kubectl` on PATH.
